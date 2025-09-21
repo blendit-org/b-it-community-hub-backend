@@ -14,6 +14,7 @@ app = FastAPI(title="Community API")
 
 # Ensure the database tables are created
 models.Base.metadata.create_all(bind=database.engine)
+# models.Base.metadata.create_all(bind=database.engine)
 
 
 app.add_middleware(
@@ -62,7 +63,7 @@ class PostResponse(PostBase):
     createdAt: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class CommentResponse(CommentBase):
     id: int
@@ -70,14 +71,14 @@ class CommentResponse(CommentBase):
     createdAt: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class ChatMessageResponse(ChatMessageBase):
     id: int
     createdAt: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # PAGINATION FIX: New response model for paginated posts
 class PaginatedPostsResponse(BaseModel):
