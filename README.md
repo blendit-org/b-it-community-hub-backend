@@ -1,7 +1,6 @@
-````markdown
-# Community API
+# Community Hub Backend
 
-**Community API** is a backend service built with **FastAPI** and **SQLAlchemy** for a community platform.  
+**Community Hub Backend** is a backend service built with **FastAPI** and **SQLAlchemy** for a community platform.  
 It allows users to create posts, add comments, send chat messages, and manage data with full CRUD operations.
 
 ---
@@ -52,8 +51,6 @@ It allows users to create posts, add comments, send chat messages, and manage da
 git clone https://github.com/your-username/community-api.git
 cd community-api
 ```
-````
-
 2. Install dependencies:
 
 ```bash
