@@ -1,346 +1,176 @@
-````markdown
-# Community API
+# Blendit Community API
 
-**Community API** is a backend service built with **FastAPI** and **SQLAlchemy** for a community platform.  
-It allows users to create posts, add comments, send chat messages, and manage data with full CRUD operations.
+### Available: [https://blendit-community-production.up.railway.app](https://blendit-community-production.up.railway.app)
 
----
+This is the backend server for the **Blendit Community Hub**, a feature-rich platform designed to foster interaction through a Q&A forum and a real-time chat. Built with **FastAPI** and **SQLAlchemy**, this API provides a robust foundation for a modern, interactive web application.
 
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Database Models](#database-models)
-- [API Endpoints](#api-endpoints)
-  - [Posts](#posts)
-  - [Comments](#comments)
-  - [Chat](#chat)
-- [Pagination](#pagination)
-- [CORS](#cors)
+The application includes a Stack Overflow–style Q&A system with voting and tagging, plus a persistent, real-time chat powered by WebSockets.
 
 ---
 
-## Features
+## ✨ Features
 
-- User management (automatic creation on first action)
-- CRUD operations for Posts, Comments, and Chat Messages
-- Paginated retrieval of posts
-- Relational integrity with cascade deletes
-- SQLAlchemy ORM for database interactions
-- FastAPI type-safe requests/responses
-- CORS enabled for all origins
+### Q&A Platform
+
+- Create, read, and delete questions.
+- Post, read, and delete answers to questions.
+- Upvote and downvote both questions and answers.
+- Question authors can accept an answer as correct.
+- Categorize questions with dynamic tags.
+
+### Real-Time Chat
+
+- Persistent chat history saved to the database.
+- Live, bidirectional communication using WebSockets.
+- Broadcast messages instantly to all connected clients.
+
+### User Management
+
+- Automatic user creation on their first interaction (posting, answering, etc.).
+
+### Database
+
+- Uses **SQLAlchemy ORM** for robust data modeling.
+- Designed for **PostgreSQL**.
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-- **Backend:** FastAPI
+- **Framework:** FastAPI
+- **Database:** PostgreSQL
 - **ORM:** SQLAlchemy
-- **Database:** MySQL / MariaDB
+- **Production Server:** Gunicorn + Uvicorn
 - **Data Validation:** Pydantic
-- **Environment Variables:** python-dotenv
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
-1. Clone the repository:
+### Prerequisites
 
-```bash
-git clone https://github.com/your-username/community-api.git
-cd community-api
-```
-````
+- Python 3.8+
+- Running PostgreSQL instance
 
-2. Install dependencies:
+### Local Installation
 
 ```bash
+# Clone the repository
+git clone <your-repo-url>
+cd blenditCommunity
+
+# Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file in the root directory (see below).
+### Environment Variables
 
-4. Run the API:
+Create a `.env` file in the project root with your database URL:
+
+```
+DATABASE_URL=postgresql://user:password@host:port/dbname
+```
+
+### Run the Development Server
 
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.main:app --reload
 ```
 
-5. API documentation is available at:
-
-```
-http://localhost:8000/docs
-```
+API will be available at:
+**[http://127.0.0.1:8000](http://127.0.0.1:8000)**
 
 ---
 
-## Environment Variables
+## 📖 API Endpoints
 
-Create a `.env` file:
+### Questions
 
-```dotenv
-DATABASE_URL=mysql+pymysql://root:password@localhost:3306/community
-```
+| Method | Endpoint                        | Description                                                | Example Body                                                                                   |
+| ------ | ------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| POST   | `/questions`                    | Create a new question                                      | `{"userId": "user1", "title": "My Title", "content": "My Content", "tags": ["blender", "3D"]}` |
+| GET    | `/questions`                    | Get a paginated list of all questions (`?skip=0&limit=10`) | –                                                                                              |
+| GET    | `/questions/{question_id}`      | Get details + answers for a question                       | –                                                                                              |
+| POST   | `/questions/{question_id}/vote` | Vote on a question                                         | `{"direction": 1}` (1 = up, -1 = down)                                                         |
+| DELETE | `/questions/{question_id}`      | Delete a question                                          | –                                                                                              |
 
-> `DATABASE_URL` format: `dialect+driver://username:password@host:port/database`
+### Answers
+
+| Method | Endpoint                           | Description       | Example Body                                  |
+| ------ | ---------------------------------- | ----------------- | --------------------------------------------- |
+| POST   | `/questions/{question_id}/answers` | Add an answer     | `{"userId": "user2", "content": "My Answer"}` |
+| POST   | `/answers/{answer_id}/vote`        | Vote on an answer | `{"direction": 1}`                            |
+| POST   | `/answers/{answer_id}/accept`      | Accept an answer  | `{"userId": "question_author_id"}`            |
+
+### Chat History
+
+| Method | Endpoint             | Description             |
+| ------ | -------------------- | ----------------------- |
+| GET    | `/chat`              | Get entire chat history |
+| PUT    | `/chat/{message_id}` | Update a chat message   |
+| DELETE | `/chat/{message_id}` | Delete a chat message   |
 
 ---
 
-## Database Models
+## 🔌 Real-Time Chat (WebSocket)
 
-| Model           | Fields                                                          | Relations                       |
-| --------------- | --------------------------------------------------------------- | ------------------------------- |
-| **User**        | `userId` (PK)                                                   | `posts`, `comments`, `messages` |
-| **Post**        | `id` (PK), `userId` (FK), `title`, `content`, `createdAt`       | `comments`                      |
-| **Comment**     | `id` (PK), `postId` (FK), `userId` (FK), `content`, `createdAt` | None                            |
-| **ChatMessage** | `id` (PK), `userId` (FK), `message`, `createdAt`                | None                            |
+- **Endpoint:** `/ws/chat`
+- **URL:** `ws://127.0.0.1:8000/ws/chat`
 
-- Cascade Deletion: Deleting a post removes all associated comments.
-- Automatic User Creation: Users are created on first post/comment/chat if they don’t exist.
-
----
-
-## API Endpoints
-
-### Posts
-
-#### Create Post
-
-**POST** `/posts`
-
-**Request Body:**
+### Client → Server
 
 ```json
 {
-  "userId": "user123",
-  "title": "My First Post",
-  "content": "This is the content of my first post."
+  "userId": "the_current_user_id",
+  "message": "The message text to be sent."
 }
 ```
 
-**Response:**
+### Server → Client
+
+**New Chat Message:**
 
 ```json
 {
-  "id": 1,
-  "userId": "user123",
-  "title": "My First Post",
-  "content": "This is the content of my first post.",
-  "createdAt": "2025-09-21T12:34:56.789Z"
-}
-```
-
----
-
-#### Get Posts (Paginated)
-
-**GET** `/posts?skip=0&limit=10`
-
-**Query Parameters:**
-
-- `skip` (integer, default=0) – number of posts to skip
-- `limit` (integer, default=10) – number of posts to return
-
-**Response:**
-
-```json
-{
-  "posts": [
-    {
-      "id": 1,
-      "userId": "user123",
-      "title": "My First Post",
-      "content": "This is the content of my first post.",
-      "createdAt": "2025-09-21T12:34:56.789Z"
-    },
-    {
-      "id": 2,
-      "userId": "user456",
-      "title": "Another Post",
-      "content": "Hello world!",
-      "createdAt": "2025-09-21T12:35:56.123Z"
-    }
-  ],
-  "total": 42
-}
-```
-
----
-
-#### Delete Post
-
-**DELETE** `/posts/{post_id}`
-
-**Response:** `204 No Content`
-
-```json
-{
-  "ok": true
-}
-```
-
----
-
-### Comments
-
-#### Add Comment
-
-**POST** `/posts/{post_id}/comments`
-
-**Request Body:**
-
-```json
-{
-  "userId": "user123",
-  "content": "This is a comment on the post."
-}
-```
-
-**Response:**
-
-```json
-{
-  "id": 1,
-  "postId": 1,
-  "userId": "user123",
-  "content": "This is a comment on the post.",
-  "createdAt": "2025-09-21T12:40:00.000Z"
-}
-```
-
----
-
-#### Get Comments for a Post
-
-**GET** `/posts/{post_id}/comments`
-
-**Response:**
-
-```json
-[
-  {
-    "id": 1,
-    "postId": 1,
-    "userId": "user123",
-    "content": "This is a comment on the post.",
-    "createdAt": "2025-09-21T12:40:00.000Z"
-  },
-  {
-    "id": 2,
-    "postId": 1,
-    "userId": "user456",
-    "content": "Another comment.",
-    "createdAt": "2025-09-21T12:41:00.000Z"
+  "type": "chat_message",
+  "data": {
+    "id": 101,
+    "userId": "user_who_sent_it",
+    "message": "The message text.",
+    "createdAt": "2025-09-26T10:30:00.123Z"
   }
-]
+}
 ```
 
----
-
-#### Delete Comment
-
-**DELETE** `/comments/{comment_id}`
-
-**Response:** `204 No Content`
+**Status Update (Join/Leave):**
 
 ```json
 {
-  "ok": true
+  "type": "status",
+  "message": "User 'some_user' has left the chat."
 }
 ```
 
 ---
 
-### Chat
+## ☁️ Deployment
 
-#### Send Chat Message
+This backend is designed for persistent web services such as **Render** or **Railway**.
 
-**POST** `/chat/send`
+⚠️ Note: WebSockets require long-lived connections, so platforms like Vercel’s Hobby tier are not supported.
 
-**Request Body:**
+### Example Procfile
 
-```json
-{
-  "userId": "user123",
-  "message": "Hello, community!"
-}
-```
-
-**Response:**
-
-```json
-{
-  "id": 1,
-  "userId": "user123",
-  "message": "Hello, community!",
-  "createdAt": "2025-09-21T12:45:00.000Z"
-}
+```bash
+web: gunicorn -w 4 -k uvicorn.workers.UvicornWorker backend.main:app
 ```
 
 ---
 
-#### Get Chat Messages
+## License
 
-**GET** `/chat`
-
-**Response:**
-
-```json
-[
-  {
-    "id": 1,
-    "userId": "user123",
-    "message": "Hello, community!",
-    "createdAt": "2025-09-21T12:45:00.000Z"
-  },
-  {
-    "id": 2,
-    "userId": "user456",
-    "message": "Hi there!",
-    "createdAt": "2025-09-21T12:46:00.000Z"
-  }
-]
-```
-
----
-
-#### Delete Chat Message
-
-**DELETE** `/chat/{chat_id}`
-
-**Response:** `204 No Content`
-
-```json
-{
-  "ok": true
-}
-```
-
----
-
-## Pagination
-
-- The `/posts` endpoint supports `skip` and `limit` query parameters.
-- Response includes a `total` field for total post count.
-
----
-
-## CORS
-
-CORS is enabled for all origins, methods, and headers:
-
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
----
-
-Made with ❤️ using **FastAPI** and **SQLAlchemy**.
+MIT License
